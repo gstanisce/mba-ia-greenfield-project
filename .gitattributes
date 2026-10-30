@@ -1,0 +1,3 @@
+# Markdown docs are parsed by the plan pipeline agents with line-anchored regexes
+# (e.g. ^scope_type: ad-hoc$); CRLF in the working tree makes those silently miss.
+*.md text eol=lf
