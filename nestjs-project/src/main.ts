@@ -1,3 +1,5 @@
+// Must stay the first import: DTO decorators read UPLOAD_MAX_BYTES when their module loads, before ConfigModule runs.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
