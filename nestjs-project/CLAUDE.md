@@ -183,7 +183,7 @@ docker compose exec -e S3_PUBLIC_ENDPOINT=http://rustfs:9000 nestjs-api npm test
 docker compose exec -e S3_PUBLIC_ENDPOINT=http://rustfs:9000 nestjs-api npm run test:e2e -- --runInBand
 ```
 
-**Stop the worker before running the video suites.** A running `video-worker` consumes the `video-processing` queue on the same Redis the tests use. It takes jobs the tests enqueue, and tests that clear the queue then fail with `Missing key for job`, or count a job that was already processed. Run `docker compose stop video-worker` first and `docker compose start video-worker` afterwards.
+The video suites run with `video-worker` up: `src/test/queue-prefix.ts` puts them on the `test` BullMQ prefix, so the worker (default `bull` prefix) never takes their jobs.
 
 Test media is generated at runtime by `src/test/video-fixtures.ts` with `ffmpeg`, so no binary fixture is committed.
 
