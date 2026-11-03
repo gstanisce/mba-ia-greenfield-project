@@ -12,7 +12,13 @@ import { VIDEO_PROCESSING_QUEUE } from './video-processing.constants';
         connection: { host: config.host, port: config.port },
       }),
     }),
-    BullModule.registerQueue({ name: VIDEO_PROCESSING_QUEUE }),
+    BullModule.registerQueueAsync({
+      name: VIDEO_PROCESSING_QUEUE,
+      inject: [queueConfig.KEY],
+      useFactory: (config: ConfigType<typeof queueConfig>) => ({
+        prefix: config.prefix,
+      }),
+    }),
   ],
   exports: [BullModule],
 })

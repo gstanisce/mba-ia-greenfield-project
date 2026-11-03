@@ -30,4 +30,10 @@ describe('VideoProcessingQueueModule (integration)', () => {
     expect(queue).toBeInstanceOf(Queue);
     expect(queue.name).toBe(VIDEO_PROCESSING_QUEUE);
   });
+
+  it('should register the queue under the configured BullMQ prefix', () => {
+    const queue = moduleRef.get<Queue>(getQueueToken(VIDEO_PROCESSING_QUEUE));
+
+    expect(queue.opts.prefix).toBe(queueConfig().prefix);
+  });
 });
