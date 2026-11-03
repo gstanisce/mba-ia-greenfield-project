@@ -57,6 +57,7 @@ _Subprojects in scope:_
 ---
 
 ## TD-02: Backend de Object Storage e SDK
+<!-- status: superseded-by: object-storage-rustfs/TD-01 -->
 
 **Scope:** Backend
 
