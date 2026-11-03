@@ -13,6 +13,10 @@ docker compose ps   # all services must show status "running"
 Then verify each infrastructure service is actually ready to accept connections — not just running:
 
 - **PostgreSQL:** `docker compose exec db pg_isready -U streamtube` — expect `accepting connections`
+- **Redis (Valkey 8.1):** `docker compose exec redis valkey-cli ping` — expect `PONG`
+- **RustFS (S3):** `docker compose exec rustfs curl --fail http://localhost:9000/health` — expect exit 0
+- **Bucket init:** `docker compose ps -a rustfs-init` — expect `Exited (0)`; it creates the bucket and the CORS rules once and then stops
+- **Video Worker:** `docker compose logs video-worker` — expect the BullMQ worker started and no crash loop; it has no healthcheck of its own
 
 Only start the NestJS dev server (`npm run start:dev`) when the user **explicitly** asks to run the application — never as part of "start the environment".
 
@@ -33,7 +37,14 @@ docker compose exec nestjs-api npm run start:dev
 
 Services:
 - `nestjs-api` — NestJS API, port `3000`
+- `video-worker` — Video Worker (same image as the API), consumes the `video-processing` queue; no port
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
+- `redis` — Valkey 8.1 (Redis-compatible), port `6379`, BullMQ backend
+- `rustfs` — RustFS 1.0.4 (S3-compatible), API port `9000`, console port `9001`
+- `rustfs-init` — one-shot: creates the bucket and CORS rules, then exits with 0
+- `mailpit` — SMTP sink, SMTP port `1025`, web UI port `8025`
+
+`docker compose up -d` starts the whole stack, including `video-worker`. To start only the infrastructure, list the services: `docker compose up -d db redis rustfs rustfs-init mailpit`.
 
 All verification and teardown commands run on the **host machine**:
 
@@ -120,6 +131,7 @@ Conventions for **how to write** each kind of test (mocking patterns, AAA struct
 These settings are required in `package.json` (jest config) and `test/jest-e2e.json` for the project's tests to work correctly:
 
 - `setupFiles: ["dotenv/config"]` — without this, `.env` is not loaded inside the Jest process. `DB_HOST`, `JWT_SECRET`, etc. fall back to undefined or to the host's `localhost`, breaking container-to-container DNS.
+- `transformIgnorePatterns: ["node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared)/)"]` — `@nestjs/bullmq` 12 and `bullmq` 6 are ESM-only; without this entry Jest cannot load them, and any suite that imports the queue (or boots `AppModule`) fails to parse. Keep it in both `package.json` and `test/jest-e2e.json`.
 - `testRegex: '.*\\.(spec|integration-spec)\\.ts$'` — covers both unit (`*.spec.ts`) and integration (`*.integration-spec.ts`) suffixes.
 
 Do not add new test-file suffixes; if a new test type is needed, update the regex deliberately.
@@ -137,6 +149,43 @@ MAIL_FROM="StreamTube <noreply@streamtube.local>"
 ```
 
 Whenever possible, prefer storing only the bare address in `.env` and composing display names in code (e.g., in `mail.config.ts`) so the file stays shell-safe.
+
+## Storage, Queue and Video Worker
+
+**Two S3 endpoints, on purpose:**
+
+- `S3_ENDPOINT` (`http://rustfs:9000`) — the API and the worker reach storage over the Compose network. Use the service name, never `localhost`.
+- `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`) — the host the **browser** reaches. Presigned `UploadPart` URLs carry this host, so the browser PUTs parts directly to storage. This is the one deliberate `localhost` in the stack, because it is a browser-facing address.
+- Consequence for tests: the presigned PUT is issued from inside the `nestjs-api` container, so every run that uploads parts must override the public endpoint. Keep `.env` on `localhost`.
+
+**Variables:** `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_CORS_ALLOWED_ORIGINS` (used by `rustfs-init`), `REDIS_HOST=redis`, `REDIS_PORT=6379`, `UPLOAD_MAX_BYTES` (default 10 GiB), `UPLOAD_PART_SIZE_BYTES` (default 64 MiB), `UPLOAD_URL_TTL_SECONDS` (default 3600).
+
+**Entrypoints:**
+
+- `src/main.ts` boots the API. It imports `dotenv/config` as its first import on purpose: the upload DTO reads `UPLOAD_MAX_BYTES` when its module loads, before `ConfigModule` runs. Do not move that import.
+- `src/worker/main.ts` boots the worker as an application context (no HTTP). `enableShutdownHooks()` is on, so `docker compose stop video-worker` waits for in-flight jobs before the process exits.
+- `VideoProcessingProcessor` is provided only by `WorkerModule`. `AppModule` must never import the worker, or the API would start consuming the queue.
+
+**Worker commands:**
+
+```bash
+docker compose logs -f video-worker                    # follow the worker
+docker compose stop video-worker                       # waits for in-flight jobs
+docker compose exec nestjs-api npm run openapi:export  # regenerate openapi.json
+```
+
+The `video-worker` service runs `npm run start:worker:dev` (watch mode, compiled from `src/worker/main.ts`). For the compiled build, `npm run build` followed by `npm run start:worker` runs `dist/worker/main.js`.
+
+**Video tests need the real services.** The video integration and e2e suites (`src/videos`, `src/video-processing`, `src/media`, `src/worker`, `test/videos-*`) run against RustFS, Redis, Postgres and the FFmpeg binaries. All of them are in the stack; `Dockerfile.dev` installs `ffmpeg` and `ffprobe`. Run them with the public-endpoint override:
+
+```bash
+docker compose exec -e S3_PUBLIC_ENDPOINT=http://rustfs:9000 nestjs-api npm test -- --runInBand
+docker compose exec -e S3_PUBLIC_ENDPOINT=http://rustfs:9000 nestjs-api npm run test:e2e -- --runInBand
+```
+
+**Stop the worker before running the video suites.** A running `video-worker` consumes the `video-processing` queue on the same Redis the tests use. It takes jobs the tests enqueue, and tests that clear the queue then fail with `Missing key for job`, or count a job that was already processed. Run `docker compose stop video-worker` first and `docker compose start video-worker` afterwards.
+
+Test media is generated at runtime by `src/test/video-fixtures.ts` with `ffmpeg`, so no binary fixture is committed.
 
 ## Build Assets
 

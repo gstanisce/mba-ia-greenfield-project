@@ -33,7 +33,6 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
    - `rustfs`: `rustfs/rustfs:1.0.4` (tag fixada); portas 9000/9001; credenciais via `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY` a partir de `S3_ACCESS_KEY`/`S3_SECRET_KEY`; volume nomeado `rustfs-data` em `/data`; healthcheck `curl --fail http://localhost:9000/health` (per `object-storage-rustfs/TD-01`).
    - `rustfs-init`: `amazon/aws-cli:2.15.0` fixado, `restart: "no"`, roda uma vez; cria `S3_BUCKET` privado (idempotente) e aplica CORS com `PUT`/`GET`/`HEAD`, `ExposeHeaders: ["ETag"]` e `AllowedHeaders: ["*"]` (per `object-storage-rustfs/TD-01`, `videos/TD-03`).
    - `redis`: Redis 7.x ou Valkey, imagem fixada; healthcheck (per `videos/TD-01`).
-   - `video-worker`: mesmo `build` da API, `command` = script do worker criado no SI-03.7, `depends_on` de `db`, `redis` e `rustfs-init` (per `videos/TD-06`).
    - `nestjs-api`: passa a depender de `redis` e `rustfs-init` (`service_completed_successfully`).
 4. Acrescentar ao `src/config/env.validation.ts` e ao `.env.example`:
    - `S3_ENDPOINT` (`http://rustfs:9000`), `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`), `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (per `videos/TD-04`);
@@ -51,7 +50,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 
 **Acceptance criteria:**
 
-- `docker compose up -d` sobe `db`, `mailpit`, `rustfs`, `redis` e `video-worker`, e `docker compose ps` mostra `rustfs` e `redis` saudáveis
+- `docker compose up -d` sobe `db`, `mailpit`, `rustfs` e `redis`, e `docker compose ps` mostra `rustfs` e `redis` saudáveis
 - Depois de `rustfs-init` terminar com código 0, o bucket `S3_BUCKET` existe e responde a um preflight CORS de `PUT` com `Access-Control-Expose-Headers` contendo `ETag`
 - `docker compose exec nestjs-api ffprobe -version` e `docker compose exec nestjs-api ffmpeg -version` saem com código 0
 - Subir a API sem `S3_BUCKET` (ou sem qualquer outra chave obrigatória nova) falha no bootstrap com erro de validação do Joi que nomeia a chave
@@ -276,6 +275,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 3. Criar `src/worker/worker.module.ts` (config, TypeORM, `StorageModule`, `VideoProcessingQueueModule`, `MediaProbeService`, `VideoProcessingProcessor`) e `src/worker/main.ts`:
    - `main.ts` usa `NestFactory.createApplicationContext(WorkerModule)` + `enableShutdownHooks()`, para que o `worker.close()` espere os jobs em andamento;
    - acrescentar ao `package.json` os scripts `start:worker` (`node dist/worker/main`) e `start:worker:dev` (watch), este último usado pelo serviço `video-worker` do Compose (per `videos/TD-06`).
+   - acrescentar ao `nestjs-project/compose.yaml` o serviço `video-worker` (movido da SI-03.1): mesmo `build` da API, `command: npm run start:worker:dev`, `depends_on` de `db`, `redis` e `rustfs-init` (per `videos/TD-06`).
 4. Criar `src/test/video-fixtures.ts` — gera vídeos de teste com `ffmpeg -f lavfi -i testsrc=duration=2:size=320x240:rate=25` (MP4 válido) e um arquivo não-vídeo, ambos em diretório temporário
 
 **Tests:**
