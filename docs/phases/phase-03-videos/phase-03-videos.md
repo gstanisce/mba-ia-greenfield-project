@@ -5,7 +5,8 @@ test_specs_aware: true
 sources_mtime:
   docs/phases/phase-03-videos/context.md: "2026-10-30T13:50:59+01:00"
   docs/phases/phase-03-videos/library-refs.md: "2026-10-30T11:01:38+01:00"
-  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-30T11:01:29+01:00"
+  docs/decisions/technical-decisions-videos.md: "2026-11-03T08:50:41.967635000+01:00"
+  docs/decisions/technical-decisions-object-storage-rustfs.md: "2026-11-03T09:01:24.505714100+01:00"
   docs/decisions/technical-decisions-openapi-docs-nestjs.md: "2026-10-30T11:01:04+01:00"
   docs/project-plan.md: "2026-10-30T11:01:04+01:00"
 ---
@@ -22,20 +23,20 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 
 ### SI-03.1 — Infra: dependências, configuração e serviços do Docker Compose
 
-**Description:** Instala as libs de fila e storage, sobe MinIO, Redis/Valkey e o serviço do worker no Compose, e expõe as novas variáveis por configs namespaced validadas pelo Joi. É a fundação de infraestrutura de todos os SIs seguintes.
+**Description:** Instala as libs de fila e storage, sobe RustFS, Redis/Valkey e o serviço do worker no Compose, e expõe as novas variáveis por configs namespaced validadas pelo Joi. É a fundação de infraestrutura de todos os SIs seguintes.
 
 **Technical actions:**
 
 1. Instalar `bullmq@^6.5.1`, `@nestjs/bullmq@^12.0.0`, `@aws-sdk/client-s3@^3.1160.0` e `@aws-sdk/s3-request-presigner@^3.1160.0` no `nestjs-project/` (per `videos/TD-01`, `videos/TD-02`; versões em `library-refs.md`)
 2. Atualizar `nestjs-project/Dockerfile.dev` — acrescentar `ffmpeg` ao `apt install` (inclui `ffprobe`), para a mesma imagem servir API e worker (per `videos/TD-06`, `videos/TD-07`)
 3. Atualizar `nestjs-project/compose.yaml`, sempre referenciando hosts pelo nome do serviço:
-   - `minio`: última tag publicada de `minio/minio`, fixada; portas 9000/9001; volume nomeado; healthcheck.
-   - `minio-init`: `minio/mc` fixado, roda uma vez; cria `S3_BUCKET` privado e aplica CORS com `PUT`/`GET`/`HEAD` e `ExposeHeaders: ["ETag"]` (per `videos/TD-02`, `videos/TD-03`).
+   - `rustfs`: `rustfs/rustfs:1.0.4` (tag fixada); portas 9000/9001; credenciais via `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY` a partir de `S3_ACCESS_KEY`/`S3_SECRET_KEY`; volume nomeado `rustfs-data` em `/data`; healthcheck `curl --fail http://localhost:9000/health` (per `object-storage-rustfs/TD-01`).
+   - `rustfs-init`: `amazon/aws-cli:2.15.0` fixado, `restart: "no"`, roda uma vez; cria `S3_BUCKET` privado (idempotente) e aplica CORS com `PUT`/`GET`/`HEAD`, `ExposeHeaders: ["ETag"]` e `AllowedHeaders: ["*"]` (per `object-storage-rustfs/TD-01`, `videos/TD-03`).
    - `redis`: Redis 7.x ou Valkey, imagem fixada; healthcheck (per `videos/TD-01`).
-   - `video-worker`: mesmo `build` da API, `command` = script do worker criado no SI-03.7, `depends_on` de `db`, `redis` e `minio-init` (per `videos/TD-06`).
-   - `nestjs-api`: passa a depender de `redis` e `minio-init`.
+   - `video-worker`: mesmo `build` da API, `command` = script do worker criado no SI-03.7, `depends_on` de `db`, `redis` e `rustfs-init` (per `videos/TD-06`).
+   - `nestjs-api`: passa a depender de `redis` e `rustfs-init` (`service_completed_successfully`).
 4. Acrescentar ao `src/config/env.validation.ts` e ao `.env.example`:
-   - `S3_ENDPOINT` (`http://minio:9000`), `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`), `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (per `videos/TD-04`);
+   - `S3_ENDPOINT` (`http://rustfs:9000`), `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`), `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (per `videos/TD-04`);
    - `REDIS_HOST` (`redis`), `REDIS_PORT`;
    - `UPLOAD_MAX_BYTES` (default `10737418240`), `UPLOAD_PART_SIZE_BYTES` (default `67108864`), `UPLOAD_URL_TTL_SECONDS` (default `3600`) (per `videos/TD-12`).
 5. Criar `src/config/storage.config.ts`, `src/config/queue.config.ts` e `src/config/upload.config.ts` com `registerAs`, e registrá-los no `load` do `ConfigModule.forRoot` (convenção herdada da Fase 01)
@@ -50,8 +51,8 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 
 **Acceptance criteria:**
 
-- `docker compose up -d` sobe `db`, `mailpit`, `minio`, `redis` e `video-worker`, e `docker compose ps` mostra `minio` e `redis` saudáveis
-- Depois de `minio-init` terminar com código 0, o bucket `S3_BUCKET` existe e responde a um preflight CORS de `PUT` com `Access-Control-Expose-Headers` contendo `ETag`
+- `docker compose up -d` sobe `db`, `mailpit`, `rustfs`, `redis` e `video-worker`, e `docker compose ps` mostra `rustfs` e `redis` saudáveis
+- Depois de `rustfs-init` terminar com código 0, o bucket `S3_BUCKET` existe e responde a um preflight CORS de `PUT` com `Access-Control-Expose-Headers` contendo `ETag`
 - `docker compose exec nestjs-api ffprobe -version` e `docker compose exec nestjs-api ffmpeg -version` saem com código 0
 - Subir a API sem `S3_BUCKET` (ou sem qualquer outra chave obrigatória nova) falha no bootstrap com erro de validação do Joi que nomeia a chave
 - Sem `UPLOAD_MAX_BYTES` no ambiente, a config resolve `10737418240`
@@ -80,9 +81,9 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 | Artifact | Layer | Test file |
 |----------|-------|-----------|
 | `StorageModule` | Unit: compilation (dois clientes injetáveis, `StorageService` exportado) | `src/storage/storage.module.spec.ts` |
-| `StorageService` | Integration contra o MinIO real: multipart via `PUT` nas URLs assinadas, `listParts`, complete, `headObject`, leitura com `Range`, abort, `INVALID_UPLOAD_PARTS` com `ETag` errado, host das URLs = `S3_PUBLIC_ENDPOINT` | `src/storage/storage.service.integration-spec.ts` |
+| `StorageService` | Integration contra o RustFS 1.0.4 real: multipart via `PUT` nas URLs assinadas, `listParts`, complete, `headObject`, leitura com `Range`, abort, `INVALID_UPLOAD_PARTS` com `ETag` errado, host das URLs = `S3_PUBLIC_ENDPOINT` | `src/storage/storage.service.integration-spec.ts` |
 
-**Dependencies:** SI-03.1 — libs, MinIO e `storage.config` precisam existir
+**Dependencies:** SI-03.1 — libs, RustFS e `storage.config` precisam existir
 
 **Acceptance criteria:**
 
@@ -191,7 +192,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 | Artifact | Layer | Test file |
 |----------|-------|-----------|
 | `VideosService` | Unit (storage, producer e repositório mockados): outro dono → `VIDEO_NOT_FOUND`; status ≠ `uploading` → `UPLOAD_NOT_IN_PROGRESS`; tamanho maior → delete + `failed` + `UPLOAD_SIZE_MISMATCH`; retry de slug em `23505`; abort do multipart quando a persistência falha; `partNumber` fora de `1..partCount` | `src/videos/videos.service.spec.ts` |
-| `VideosService` | Integration (Postgres, MinIO e Redis reais): init persiste rascunho com `upload_id`; complete leva a `processing` e deixa um job `process-video` com `id = videoId`; abort remove o registro e o multipart | `src/videos/videos.service.integration-spec.ts` |
+| `VideosService` | Integration (Postgres, RustFS e Redis reais): init persiste rascunho com `upload_id`; complete leva a `processing` e deixa um job `process-video` com `id = videoId`; abort remove o registro e o multipart | `src/videos/videos.service.integration-spec.ts` |
 | `ChannelsService.findByUserId` | Integration: retorna o canal do usuário; `null` para usuário sem canal | `src/channels/channels.service.integration-spec.ts` |
 
 **Dependencies:** SI-03.2 (StorageService), SI-03.3 (entidade `Video`), SI-03.4 (slug e produtor)
@@ -283,7 +284,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 |----------|-------|-----------|
 | `MediaProbeService` | Integration com o FFmpeg real: fixture de 2s → `durationSeconds` ≈ 2, `width = 320`, `height = 240`; thumbnail começa com os bytes JPEG `FF D8`; arquivo não-vídeo lança erro | `src/media/media-probe.service.integration-spec.ts` |
 | `VideoProcessingProcessor` | Unit: última tentativa → `failed` + `processing_error` + relança; tentativa não final → relança sem gravar `failed`; vídeo já `ready` → não chama `probe` | `src/video-processing/video-processing.processor.spec.ts` |
-| `VideoProcessingProcessor` | Integration (Postgres, MinIO e FFmpeg reais): fixture válida → `ready` com `duration_seconds`, `metadata` e thumbnail no bucket; arquivo inválido na última tentativa → `failed` | `src/video-processing/video-processing.processor.integration-spec.ts` |
+| `VideoProcessingProcessor` | Integration (Postgres, RustFS e FFmpeg reais): fixture válida → `ready` com `duration_seconds`, `metadata` e thumbnail no bucket; arquivo inválido na última tentativa → `failed` | `src/video-processing/video-processing.processor.integration-spec.ts` |
 | `WorkerModule` | Unit: compilation; o `AppModule` da API não registra `VideoProcessingProcessor` | `src/worker/worker.module.spec.ts` |
 
 **Dependencies:** SI-03.2 (StorageService), SI-03.3 (entidade `Video`), SI-03.4 (contrato da fila)
@@ -360,10 +361,10 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
    - a aresta `frontend → storage` passa a "Uploads parts (pre-signed)";
    - a leitura de vídeo passa a ser `frontend → api` (streaming proxied, per `videos/TD-03`, `videos/TD-10`).
 3. Atualizar `nestjs-project/CLAUDE.md`:
-   - serviços `minio`, `minio-init`, `redis` e `video-worker`, com as verificações de prontidão (`redis-cli ping`, healthcheck do MinIO);
+   - serviços `rustfs`, `rustfs-init`, `redis` e `video-worker`, com as verificações de prontidão (`redis-cli ping`, healthcheck do RustFS);
    - variáveis `S3_*`, `REDIS_*` e `UPLOAD_*`, incluindo a regra `S3_ENDPOINT` interno × `S3_PUBLIC_ENDPOINT`;
    - como subir e ver os logs do worker;
-   - que os testes de integração e e2e de vídeo exigem MinIO, Redis e FFmpeg reais.
+   - que os testes de integração e e2e de vídeo exigem RustFS, Redis e FFmpeg reais.
 
 **Tests:** _(empty — documentação; verificada pelos critérios de aceite)_
 
@@ -373,7 +374,7 @@ Entregar o upload de vídeos de até 10GB direto ao object storage (multipart re
 
 - O `CLAUDE.md` raiz não menciona mais a Message Queue como "TBD" e descreve o worker
 - `docs/diagrams/software-arch.mermaid` renderiza sem erro e mostra a fila como BullMQ/Redis
-- Seguindo só o `nestjs-project/CLAUDE.md`, um desenvolvedor sobe o ambiente completo (incluindo `minio`, `redis` e `video-worker`), confirma a prontidão de cada serviço e roda as suítes de teste
+- Seguindo só o `nestjs-project/CLAUDE.md`, um desenvolvedor sobe o ambiente completo (incluindo `rustfs`, `redis` e `video-worker`), confirma a prontidão de cada serviço e roda as suítes de teste
 
 ---
 
@@ -663,7 +664,7 @@ Falhas de processamento não são erros HTTP: o worker grava a mensagem em `proc
 
 ```
 SI-03.1 (root — infra: libs, Compose, configs)
-├── SI-03.2 — StorageService precisa das libs AWS, do MinIO e do storage.config
+├── SI-03.2 — StorageService precisa das libs AWS, do RustFS e do storage.config
 ├── SI-03.4 — produtor precisa do @nestjs/bullmq, do Redis e do queue.config
 SI-03.3 (root — entidade + migration)
 

@@ -4,8 +4,9 @@ name: phase-03-videos
 status: clean
 issue_count: 0
 sources_mtime:
-  docs/phases/phase-03-videos/context.md: "2026-10-30T13:50:59+01:00"
-  docs/decisions/technical-decisions-phase-03-videos.md: "2026-10-30T11:01:29+01:00"
+  docs/phases/phase-03-videos/context.md: "2026-11-03T09:43:44.922356700+01:00"
+  docs/decisions/technical-decisions-videos.md: "2026-11-03T08:50:41.967635000+01:00"
+  docs/decisions/technical-decisions-object-storage-rustfs.md: "2026-11-03T09:01:24.505714100+01:00"
 issues:
   - id: OQ-1
     status: resolved
@@ -92,15 +93,15 @@ _None._
 
 ## Resolved Issues
 
-- **OQ-1** _(resolved_by videos/TD-01)_ — TD-01 pending — Tecnologia de Fila de Mensagens. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-2** _(resolved_by videos/TD-02)_ — TD-02 pending — Backend de Object Storage e SDK. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-3** _(resolved_by videos/TD-03)_ — TD-03 pending — Protocolo de Upload de Arquivos Grandes (≤10GB, retomável). Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-4** _(resolved_by videos/TD-04)_ — TD-04 pending — Endereçamento do Storage (interno vs navegador). Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-5** _(resolved_by videos/TD-05)_ — TD-05 pending — Modelo de Status do Vídeo (processamento vs publicação). Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-6** _(resolved_by videos/TD-06)_ — TD-06 pending — Topologia do Processo Worker. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-7** _(resolved_by videos/TD-07)_ — TD-07 pending — Ferramentas de Análise de Mídia e Thumbnail. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-8** _(resolved_by videos/TD-08)_ — TD-08 pending — Gatilho do Processamento, Contrato do Job e Retry. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-9** _(resolved_by videos/TD-09)_ — TD-09 pending — Identificador Público Único do Vídeo (slug da URL). Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-10** _(resolved_by videos/TD-10)_ — TD-10 pending — Entrega do Streaming e do Download. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-11** _(resolved_by videos/TD-11)_ — TD-11 pending — Política de Acesso a Vídeos Antes da Publicação. Decisão registrada pelo /plan-resolve em 2026-10-30.
-- **OQ-12** _(resolved_by videos/TD-12)_ — TD-12 pending — Limites de Upload e Política de Validação da Entrada. Decisão registrada pelo /plan-resolve em 2026-10-30.
+- **OQ-1** _(resolved_by videos/TD-01)_ — TD-01 pending — Tecnologia de Fila de Mensagens.
+- **OQ-2** _(resolved_by videos/TD-02)_ — TD-02 pending — Backend de Object Storage e SDK.
+- **OQ-3** _(resolved_by videos/TD-03)_ — TD-03 pending — Protocolo de Upload de Arquivos Grandes (≤10GB, retomável).
+- **OQ-4** _(resolved_by videos/TD-04)_ — TD-04 pending — Endereçamento do Storage (interno vs navegador).
+- **OQ-5** _(resolved_by videos/TD-05)_ — TD-05 pending — Modelo de Status do Vídeo (processamento vs publicação).
+- **OQ-6** _(resolved_by videos/TD-06)_ — TD-06 pending — Topologia do Processo Worker.
+- **OQ-7** _(resolved_by videos/TD-07)_ — TD-07 pending — Ferramentas de Análise de Mídia e Thumbnail.
+- **OQ-8** _(resolved_by videos/TD-08)_ — TD-08 pending — Gatilho do Processamento, Contrato do Job e Retry.
+- **OQ-9** _(resolved_by videos/TD-09)_ — TD-09 pending — Identificador Público Único do Vídeo (slug da URL).
+- **OQ-10** _(resolved_by videos/TD-10)_ — TD-10 pending — Entrega do Streaming e do Download.
+- **OQ-11** _(resolved_by videos/TD-11)_ — TD-11 pending — Política de Acesso a Vídeos Antes da Publicação.
+- **OQ-12** _(resolved_by videos/TD-12)_ — TD-12 pending — Limites de Upload e Política de Validação da Entrada.
