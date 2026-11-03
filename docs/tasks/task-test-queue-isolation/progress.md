@@ -14,9 +14,13 @@
   - A suíte completa (unit/integração e e2e) foi rodada depois desta SI.
 
 ### SI-2 — Suítes de vídeo usam prefixo próprio
-- **Status:** pending
-- **Tests:** —
-- **Observations:** none
+- **Status:** completed
+- **Tests:** 1 novo (asserção de prefixo `test` em `video-processing.producer.integration-spec.ts`); full unit/integração 229/229 em 40 suites; full e2e 71/71 em 5 suites; `tsc --noEmit` exit 0; `npm run lint` exit 0 (0 errors)
+- **Observations:**
+  - `src/test/queue-prefix.ts` roda como `setupFiles` depois do `dotenv/config` e força `QUEUE_PREFIX=test`. Forçar (e não usar `??=`) garante que um `.env` com outro prefixo não vaze para os testes.
+  - Ligado nos dois configs do Jest: `package.json` (`<rootDir>/test/queue-prefix.ts`, rootDir `src`) e `test/jest-e2e.json` (`<rootDir>/../src/test/queue-prefix.ts`). No e2e o `<rootDir>` é a pasta `test/`, por isso o `../`. Na primeira tentativa o caminho estava errado e o e2e não carregava; corrigido e rodado de novo.
+  - Com o worker parado, as chaves de teste vão para `test:video-processing:*`, separadas das do worker de desenvolvimento (`bull:`).
+  - Ainda não verificado: o comportamento com o `video-worker` de pé. Isso é a SI-3.
 
 ### SI-3 — Verificação com o worker de pé
 - **Status:** pending
