@@ -12,6 +12,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+      rustfs-init:
+        condition: service_completed_successfully
 
   db:
     image: postgres:17
@@ -32,5 +34,47 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+
+  rustfs:
+    image: rustfs/rustfs:1.0.4
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - RUSTFS_ACCESS_KEY=${S3_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${S3_SECRET_KEY}
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rustfs-init:
+    image: amazon/aws-cli:2.15.0
+    restart: "no"
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_KEY}
+      - AWS_DEFAULT_REGION=${S3_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_CORS_ALLOWED_ORIGINS=${S3_CORS_ALLOWED_ORIGINS}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        ENDPOINT=http://rustfs:9000
+        if ! out=$$(aws --endpoint-url "$$ENDPOINT" s3api create-bucket --bucket "$$S3_BUCKET" 2>&1); then
+          echo "$$out" | grep -q BucketAlreadyOwnedByYou || { echo "$$out"; exit 1; }
+        fi
+        ORIGINS=$$(echo "$$S3_CORS_ALLOWED_ORIGINS" | sed 's/,/","/g')
+        aws --endpoint-url "$$ENDPOINT" s3api put-bucket-cors --bucket "$$S3_BUCKET" --cors-configuration "{\"CORSRules\":[{\"AllowedOrigins\":[\"$$ORIGINS\"],\"AllowedMethods\":[\"PUT\",\"GET\",\"HEAD\"],\"AllowedHeaders\":[\"*\"],\"ExposeHeaders\":[\"ETag\"]}]}"
+
+volumes:
+  rustfs-data:
 
 
