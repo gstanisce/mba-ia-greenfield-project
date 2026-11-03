@@ -38,6 +38,10 @@ describe('VideoProcessingProducer (integration, Redis)', () => {
     await queue.obliterate({ force: true });
   });
 
+  it('should keep the test queue under the "test" prefix, apart from the worker queue', () => {
+    expect(queue.opts.prefix).toBe('test');
+  });
+
   it('should enqueue a process-video job with { videoId } as data and videoId as job id', async () => {
     const videoId = randomUUID();
 

@@ -9,5 +9,5 @@
   "transformIgnorePatterns": [
     "node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared)/)"
   ],
-  "setupFiles": ["dotenv/config"]
+  "setupFiles": ["dotenv/config", "<rootDir>/../src/test/queue-prefix.ts"]
 }
