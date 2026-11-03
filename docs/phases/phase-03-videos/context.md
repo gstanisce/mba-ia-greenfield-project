@@ -45,18 +45,18 @@ sources_mtime:
 
 | Ref | Source | Scope | Topic | Status | Decision | Libraries |
 |-----|--------|-------|-------|--------|----------|-----------|
-| phase-03-videos/TD-01 | phase | Backend | Tecnologia de Fila de Mensagens | decided | A (BullMQ + Redis/Valkey) | bullmq, @nestjs/bullmq |
-| phase-03-videos/TD-02 | phase | Backend | Backend de Object Storage e SDK | decided | A (AWS SDK v3 + MinIO fixado) | @aws-sdk/client-s3, @aws-sdk/s3-request-presigner |
-| phase-03-videos/TD-03 | phase | Cross-layer | Protocolo de Upload de Arquivos Grandes (≤10GB, retomável) | decided | A (S3 multipart pré-assinado) | — |
-| phase-03-videos/TD-04 | phase | Backend | Endereçamento do Storage (interno vs exposto ao navegador) | decided | A (Dois endpoints) | — |
-| phase-03-videos/TD-05 | phase | Backend | Modelo de Status do Vídeo (processamento vs publicação) | decided | B (Duas colunas) | — |
-| phase-03-videos/TD-06 | phase | Backend | Topologia do Processo Worker | decided | A (Processo separado, mesmo codebase) | — |
-| phase-03-videos/TD-07 | phase | Backend | Ferramentas de Análise de Mídia e Thumbnail | decided | A (ffmpeg/ffprobe via spawn + URL) | — |
-| phase-03-videos/TD-08 | phase | Backend | Gatilho do Processamento, Contrato do Job e Política de Retry | decided | A (Enfileirar no complete) | — |
-| phase-03-videos/TD-09 | phase | Cross-layer | Identificador Público Único do Vídeo (slug da URL) | decided | A (Slug base62 de 11 caracteres) | — |
-| phase-03-videos/TD-10 | phase | Cross-layer | Entrega do Streaming e do Download | decided | A (Proxy pela API com 206) | — |
-| phase-03-videos/TD-11 | phase | Backend | Política de Acesso a Vídeos Antes da Publicação | decided | A (Só o dono até publicar) | — |
-| phase-03-videos/TD-12 | phase | Cross-layer | Limites de Upload e Política de Validação da Entrada | decided | A (Init + HeadObject + ffprobe) | — |
+| videos/TD-01 | phase | Backend | Tecnologia de Fila de Mensagens | decided | A (BullMQ + Redis/Valkey) | bullmq, @nestjs/bullmq |
+| videos/TD-02 | phase | Backend | Backend de Object Storage e SDK | decided | A (AWS SDK v3 + MinIO fixado) | @aws-sdk/client-s3, @aws-sdk/s3-request-presigner |
+| videos/TD-03 | phase | Cross-layer | Protocolo de Upload de Arquivos Grandes (≤10GB, retomável) | decided | A (S3 multipart pré-assinado) | — |
+| videos/TD-04 | phase | Backend | Endereçamento do Storage (interno vs exposto ao navegador) | decided | A (Dois endpoints) | — |
+| videos/TD-05 | phase | Backend | Modelo de Status do Vídeo (processamento vs publicação) | decided | B (Duas colunas) | — |
+| videos/TD-06 | phase | Backend | Topologia do Processo Worker | decided | A (Processo separado, mesmo codebase) | — |
+| videos/TD-07 | phase | Backend | Ferramentas de Análise de Mídia e Thumbnail | decided | A (ffmpeg/ffprobe via spawn + URL) | — |
+| videos/TD-08 | phase | Backend | Gatilho do Processamento, Contrato do Job e Política de Retry | decided | A (Enfileirar no complete) | — |
+| videos/TD-09 | phase | Cross-layer | Identificador Público Único do Vídeo (slug da URL) | decided | A (Slug base62 de 11 caracteres) | — |
+| videos/TD-10 | phase | Cross-layer | Entrega do Streaming e do Download | decided | A (Proxy pela API com 206) | — |
+| videos/TD-11 | phase | Backend | Política de Acesso a Vídeos Antes da Publicação | decided | A (Só o dono até publicar) | — |
+| videos/TD-12 | phase | Cross-layer | Limites de Upload e Política de Validação da Entrada | decided | A (Init + HeadObject + ffprobe) | — |
 
 _Source files:_
 
@@ -66,74 +66,74 @@ _Source files:_
 
 | Capability (from project-plan.md) | Covered by |
 |-----------------------------------|------------|
-| Serviço de armazenamento de arquivos (vídeos e thumbnails) | phase-03-videos/TD-02, phase-03-videos/TD-04 |
-| Serviço de processamento em segundo plano (filas) | phase-03-videos/TD-01, phase-03-videos/TD-06 |
-| Upload de vídeos com suporte a arquivos de até 10GB sem impacto na performance | phase-03-videos/TD-03, phase-03-videos/TD-12 |
-| Pré-cadastro automático do vídeo como rascunho ao iniciar o upload | phase-03-videos/TD-05, phase-03-videos/TD-11 |
-| Processamento automático do vídeo após upload (extração de duração e metadados) | phase-03-videos/TD-07, phase-03-videos/TD-08 |
-| Geração automática de thumbnail a partir de um frame do vídeo | phase-03-videos/TD-07 |
-| URL única por vídeo, sem conflito com outros vídeos | phase-03-videos/TD-09 |
-| Reprodução via streaming (sem necessidade de download completo) | phase-03-videos/TD-10, phase-03-videos/TD-11 |
-| Download do vídeo pelo usuário | phase-03-videos/TD-10, phase-03-videos/TD-11 |
+| Serviço de armazenamento de arquivos (vídeos e thumbnails) | videos/TD-02, videos/TD-04 |
+| Serviço de processamento em segundo plano (filas) | videos/TD-01, videos/TD-06 |
+| Upload de vídeos com suporte a arquivos de até 10GB sem impacto na performance | videos/TD-03, videos/TD-12 |
+| Pré-cadastro automático do vídeo como rascunho ao iniciar o upload | videos/TD-05, videos/TD-11 |
+| Processamento automático do vídeo após upload (extração de duração e metadados) | videos/TD-07, videos/TD-08 |
+| Geração automática de thumbnail a partir de um frame do vídeo | videos/TD-07 |
+| URL única por vídeo, sem conflito com outros vídeos | videos/TD-09 |
+| Reprodução via streaming (sem necessidade de download completo) | videos/TD-10, videos/TD-11 |
+| Download do vídeo pelo usuário | videos/TD-10, videos/TD-11 |
 
 ## Decisions Detail
 
-### phase-03-videos/TD-01
+### videos/TD-01
 
 **Recommendation:** É a única opção com integração oficial do Nest e com retry, backoff e deduplicação por job prontos, e o TD-08 depende disso. O container extra é barato no Compose, e o diagrama C4 já prevê um container separado para a fila. Fixar uma imagem do Redis 7.x ou do Valkey. A Option B é uma alternativa crível se manter a stack só com Postgres importar mais do que a configuração idiomática.
 **Libraries:** bullmq, @nestjs/bullmq
 
-### phase-03-videos/TD-02
+### videos/TD-02
 
 **Recommendation:** Escrever contra a API S3 genérica torna a imagem do servidor um detalhe descartável do Compose. O MinIO fixado é o alvo de dev de menor risco para multipart, URLs pré-assinadas e CORS, e já aparece na arquitetura. Se a imagem congelada virar problema, migrar para a Option B é a troca de um serviço, sem impacto no código. Um único bucket privado; chaves dos objetos agrupadas por vídeo (`videos/{videoId}/…`).
 **Libraries:** @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
 
-### phase-03-videos/TD-03
+### videos/TD-03
 
 **Recommendation:** É a única opção que atende os dois requisitos não funcionais: nenhum byte passa pela API ou pelo BFF, e a retomada é por parte. Ela respeita a regra do BFF estrito (só o handshake JSON passa pelo BFF) e bate com a aresta "Frontend → Object Storage" do C4. Os custos (endpoint público do storage, CORS) são tratados no TD-04.
 **Libraries:** —
 
-### phase-03-videos/TD-04
+### videos/TD-04
 
 **Recommendation:** É a única opção que mantém a regra de nomes de serviço do Compose sem configuração na máquina host, e vai para produção (host público de CDN/S3) com uma única variável de ambiente.
 **Libraries:** —
 
-### phase-03-videos/TD-05
+### videos/TD-05
 
 **Recommendation:** Processamento e publicação são ciclos de vida independentes, controlados por atores e fases diferentes. Separá-los agora evita redefinir `draft` na Fase 04. Falhas guardam a mensagem em `processing_error`.
 **Libraries:** —
 
-### phase-03-videos/TD-06
+### videos/TD-06
 
 **Recommendation:** Ela entrega o isolamento de container do C4 e a escala independente sem a duplicação de código ou o ferramental de monorepo que a Option C exigiria.
 **Libraries:** —
 
-### phase-03-videos/TD-07
+### videos/TD-07
 
 **Recommendation:** Evita um wrapper descontinuado e evita copiar 10GB por job, já que o ffprobe e o seek de um único frame só precisam de algumas leituras com Range. O FFmpeg vai na imagem compartilhada pela API e pelo worker (TD-06).
 **Libraries:** —
 
-### phase-03-videos/TD-08
+### videos/TD-08
 
 **Recommendation:** Com o TD-03 A, a API já está no caminho crítico da conclusão, então este é o gatilho correto mais simples. A janela de queda fica registrada como tarefa de follow-up.
 **Libraries:** —
 
-### phase-03-videos/TD-09
+### videos/TD-09
 
 **Recommendation:** É curto e impossível de adivinhar, o que a visibilidade unlisted da Fase 04 precisa. Reaproveita o padrão de retry em `23505` já existente e não adiciona dependência.
 **Libraries:** —
 
-### phase-03-videos/TD-10
+### videos/TD-10
 
 **Recommendation:** Como já preferido pelo usuário na preparação da fase. Mantém a autorização por requisição (necessária para os rascunhos no TD-11 e para os vídeos unlisted da Fase 04), e o storage continua privado para leitura. O custo de banda é aceitável na escala deste projeto, e uma CDN ou a migração para a Option B podem vir depois sem mudar o formato da URL pública.
 **Libraries:** —
 
-### phase-03-videos/TD-11
+### videos/TD-11
 
 **Recommendation:** Nunca expõe rascunhos e mantém o contrato do guard inalterado. O entregável "streaming funcionando" é atendido pelo dono. A auth opcional pertence às regras de visibilidade da Fase 04.
 **Libraries:** —
 
-### phase-03-videos/TD-12
+### videos/TD-12
 
 **Recommendation:** Cada limite é aplicado no ponto em que é mais barato (declarado no init, tamanho real no complete, conteúdo real no worker), e o ffprobe continua sendo a única autoridade sobre "isto é um vídeo". Tamanho de parte, tamanho máximo e expiração das URLs vêm do env e são devolvidos na resposta do init, para que o cliente nunca os fixe no código.
 **Libraries:** —

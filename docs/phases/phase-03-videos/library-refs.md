@@ -28,7 +28,7 @@ Excertos da documentação oficial (via Context7), focados no que os TDs da Fase
 
 ### bullmq
 
-Usado por: `phase-03-videos/TD-01`, `TD-08`.
+Usado por: `videos/TD-01`, `TD-08`.
 
 - **Retry com backoff exponencial (TD-08):** opções por job, `attempts: 3` + `backoff: { type: 'exponential', delay: 1000 }`, o que dá esperas de 1s, 2s e 4s. Também dá para defini-las uma vez como `defaultJobOptions` da fila.
   ```ts
@@ -45,7 +45,7 @@ Usado por: `phase-03-videos/TD-01`, `TD-08`.
 
 ### @nestjs/bullmq
 
-Usado por: `phase-03-videos/TD-01`, `TD-06`, `TD-08`.
+Usado por: `videos/TD-01`, `TD-06`, `TD-08`.
 
 - **Configuração global:** `BullModule.forRootAsync({ useFactory, inject })` registra a conexão compartilhada (global). Seguindo a convenção herdada, injete a config namespaced (`queueConfig.KEY`) em vez do `ConfigService` genérico.
   ```ts
@@ -64,7 +64,7 @@ Usado por: `phase-03-videos/TD-01`, `TD-06`, `TD-08`.
 
 ### @aws-sdk/client-s3
 
-Usado por: `phase-03-videos/TD-02`, `TD-03`, `TD-04`, `TD-07`, `TD-10`, `TD-12`.
+Usado por: `videos/TD-02`, `TD-03`, `TD-04`, `TD-07`, `TD-10`, `TD-12`.
 
 - **Cliente para MinIO (TD-02/TD-04):** `new S3Client({ endpoint, region, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } })`. Com `forcePathStyle` o bucket vai no caminho (`host/bucket/key`). Pelo TD-04 A são dois clientes: um em `S3_ENDPOINT` (interno, chamadas de dados) e outro em `S3_PUBLIC_ENDPOINT` (só para assinar URLs).
 - **⚠ Checksums padrão (gotcha para MinIO e URLs pré-assinadas):** a partir das versões recentes do v3, o padrão é `requestChecksumCalculation: 'WHEN_SUPPORTED'`. Com isso o SDK acrescenta `x-amz-sdk-checksum-algorithm`/`x-amz-checksum-crc32` em operações como `PutObject`/`UploadPart`. Isso quebra servidores S3-compatíveis e URLs pré-assinadas consumidas pelo navegador. Configure **os dois clientes** com:
@@ -80,7 +80,7 @@ Usado por: `phase-03-videos/TD-02`, `TD-03`, `TD-04`, `TD-07`, `TD-10`, `TD-12`.
 
 ### @aws-sdk/s3-request-presigner
 
-Usado por: `phase-03-videos/TD-03`, `TD-04`, `TD-07`.
+Usado por: `videos/TD-03`, `TD-04`, `TD-07`.
 
 - `getSignedUrl(client, command, { expiresIn })` assina qualquer comando S3; `expiresIn` padrão é **900s**. Use o TTL de `UPLOAD_URL_TTL_SECONDS` (TD-12).
 - **Partes do multipart (TD-03):** `getSignedUrl(publicClient, new UploadPartCommand({ Bucket, Key, UploadId, PartNumber }), { expiresIn })`. Assinar com o **cliente público** (TD-04) garante que o host da URL seja resolvível pelo navegador; a assinatura é offline e não abre conexão.
